@@ -4,7 +4,7 @@
 #include "qtcanvas.h"
 #include <QApplication>
 #include <QBitmap>
-#include <QDesktopWidget>
+//#include <QDesktopWidget>
 #include <QImage>
 #include <QPainter>
 #include <QTimer>
@@ -31,8 +31,8 @@ public:
 class QtCanvasViewData {
 public:
     QtCanvasViewData() {}
-    QMatrix xform;
-    QMatrix ixform;
+    QTransform xform;
+    QTransform ixform;
     bool highQuality;
 };
 
@@ -259,7 +259,7 @@ public:
 
     void sort()
     {
-        qSort(m_list.begin(), m_list.end(), QtCanvasItemLess());
+        std::sort(m_list.begin(), m_list.end(), QtCanvasItemLess());
     }
 
     const QtCanvasItemList &list() const
@@ -581,7 +581,7 @@ QtCanvasChunk& QtCanvas::chunkContaining(int x, int y) const
 */
 QtCanvasItemList QtCanvas::allItems()
 {
-    return d->itemDict.toList();
+    return d->itemDict.values();
 }
 
 
@@ -929,12 +929,12 @@ void QtCanvas::advance()
 */
 void QtCanvas::drawViewArea(QtCanvasView* view, QPainter* p, const QRect& vr, bool)
 {
-    QMatrix wm = view->worldMatrix();
-    QMatrix iwm = wm.inverted();
+    QTransform wm = view->worldMatrix();
+    QTransform iwm = wm.inverted();
     // ivr = covers all chunks in vr
     QRect ivr = iwm.mapRect(vr);
 
-    p->setMatrix(wm);
+    p->setWorldTransform(wm);
     drawCanvasArea(ivr, p, false);
 }
 
@@ -1115,7 +1115,7 @@ void QtCanvas::drawCanvasArea(const QRect& inarea, QPainter* p, bool /*double_bu
             }
         }
     }
-    qSort(allvisible.begin(), allvisible.end(), QtCanvasItemLess());
+    std::sort(allvisible.begin(), allvisible.end(), QtCanvasItemLess());
 
     drawBackground(*p, area);
     if (!allvisible.isEmpty()) {
@@ -2313,7 +2313,7 @@ QtCanvasItemList QtCanvas::collisions(const QRect& r) const
     i.setPen(NoPen);
     i.show(); // doesn't actually show, since we destroy it
     QtCanvasItemList l = i.collisions(true);
-    qSort(l.begin(), l.end(), QtCanvasItemLess());
+    std::sort(l.begin(), l.end(), QtCanvasItemLess());
     return l;
 }
 
@@ -2713,7 +2713,7 @@ bool QtCanvasPixmapArray::readPixmaps(const QString& datafilenamepattern,
         framecount = 1;
     for (int i = 0; i < framecount; i++) {
         QString r;
-        r.sprintf("%04d", i);
+        r.asprintf("%04d", i);
         if (maskonly) {
             if (!img[i]->collision_mask)
                 img[i]->collision_mask = new QImage();
@@ -3053,7 +3053,7 @@ void QtCanvasSprite::draw(QPainter& painter)
     For example:
 
     \code
-    QMatrix wm;
+    QTransform wm;
     wm.scale(2, 2);   // Zooms in by 2 times
     wm.rotate(90);    // Rotates 90 degrees counter clockwise
                         // around the origin.
@@ -3079,7 +3079,7 @@ void QtCanvasSprite::draw(QPainter& painter)
     QRect canvasRect = myCanvasView->inverseWorldMatrix().mapRect(rc);
     \endcode
 
-    \sa QMatrix QPainter::setWorldMatrix()
+    \sa QTransform QPainter::setWorldMatrix()
 
 */
 
@@ -3279,7 +3279,7 @@ void QtCanvasView::setCanvas(QtCanvas* canvas)
 
     \sa setWorldMatrix() inverseWorldMatrix()
 */
-const QMatrix &QtCanvasView::worldMatrix() const
+const QTransform &QtCanvasView::worldMatrix() const
 {
     return d->xform;
 }
@@ -3290,7 +3290,7 @@ const QMatrix &QtCanvasView::worldMatrix() const
 
     \sa setWorldMatrix() worldMatrix()
 */
-const QMatrix &QtCanvasView::inverseWorldMatrix() const
+const QTransform &QtCanvasView::inverseWorldMatrix() const
 {
     return d->ixform;
 }
@@ -3306,9 +3306,9 @@ const QMatrix &QtCanvasView::inverseWorldMatrix() const
 
     Returns false if \a wm is not invertable; otherwise returns true.
 
-    \sa worldMatrix() inverseWorldMatrix() QMatrix::isInvertible()
+    \sa worldMatrix() inverseWorldMatrix() QTransform::isInvertible()
 */
-bool QtCanvasView::setWorldMatrix(const QMatrix & wm)
+bool QtCanvasView::setWorldMatrix(const QTransform & wm)
 {
     bool ok = wm.isInvertible();
     if (ok) {
@@ -3356,7 +3356,7 @@ QSize QtCanvasView::sizeHint() const
         return QScrollArea::sizeHint();
     // should maybe take transformations into account
     return (canvas()->size() + 2 * QSize(frameWidth(), frameWidth()))
-           .boundedTo(3 * QApplication::desktop()->size() / 4);
+           .boundedTo(3 * QWidget::screen()->size() / 4);
 }
 
 /*
@@ -5135,7 +5135,7 @@ from the X Consortium.
  *     to run the bresenham algorithm.
  *     The variables may be hardcoded into the declarations
  *     instead of using this structure to make use of
- *     register declarations.
+ *     declarations.
  */
 typedef struct {
     int minor;         /* minor axis        */
@@ -5318,8 +5318,8 @@ static bool
 miInsertEdgeInET(EdgeTable *ET, EdgeTableEntry *ETE, 
         int scanline, ScanLineListBlock **SLLBlock, int *iSLLBlock)
 {
-    register EdgeTableEntry *start, *prev;
-    register ScanLineList *pSLL, *pPrevSLL;
+    EdgeTableEntry *start, *prev;
+    ScanLineList *pSLL, *pPrevSLL;
     ScanLineListBlock *tmpSLLBlock;
 
     /*
@@ -5416,7 +5416,7 @@ typedef struct {
 static void
 miFreeStorage(ScanLineListBlock   *pSLLBlock)
 {
-    register ScanLineListBlock   *tmpSLLBlock;
+    ScanLineListBlock   *tmpSLLBlock;
 
     while (pSLLBlock)
     {
@@ -5430,8 +5430,8 @@ static bool
 miCreateETandAET(int count, DDXPointPtr pts, EdgeTable *ET, 
         EdgeTableEntry *AET, EdgeTableEntry *pETEs, ScanLineListBlock *pSLLBlock)
 {
-    register DDXPointPtr top, bottom;
-    register DDXPointPtr PrevPt, CurrPt;
+    DDXPointPtr top, bottom;
+    DDXPointPtr PrevPt, CurrPt;
     int iSLLBlock = 0;
 
     int dy;
@@ -5520,8 +5520,8 @@ miCreateETandAET(int count, DDXPointPtr pts, EdgeTable *ET,
 static void
 miloadAET(EdgeTableEntry *AET, EdgeTableEntry *ETEs)
 {
-    register EdgeTableEntry *pPrevAET;
-    register EdgeTableEntry *tmp;
+    EdgeTableEntry *pPrevAET;
+    EdgeTableEntry *tmp;
 
     pPrevAET = AET;
     AET = AET->next;
@@ -5567,9 +5567,9 @@ miloadAET(EdgeTableEntry *AET, EdgeTableEntry *ETEs)
 static void
 micomputeWAET(EdgeTableEntry *AET)
 {
-    register EdgeTableEntry *pWETE;
-    register int inside = 1;
-    register int isInside = 0;
+    EdgeTableEntry *pWETE;
+    int inside = 1;
+    int isInside = 0;
 
     AET->nextWETE = 0;
     pWETE = AET;
@@ -5605,10 +5605,10 @@ micomputeWAET(EdgeTableEntry *AET)
 static int
 miInsertionSort(EdgeTableEntry *AET)
 {
-    register EdgeTableEntry *pETEchase;
-    register EdgeTableEntry *pETEinsert;
-    register EdgeTableEntry *pETEchaseBackTMP;
-    register int changed = 0;
+    EdgeTableEntry *pETEchase;
+    EdgeTableEntry *pETEinsert;
+    EdgeTableEntry *pETEchaseBackTMP;
+    int changed = 0;
 
     AET = AET->next;
     while (AET)
@@ -5680,12 +5680,12 @@ void QtPolygonScanner::scan(const QPolygon& pa, bool winding, int index, int npo
 
     DDXPointPtr ptsIn = (DDXPointPtr)pa.data();
     ptsIn += index;
-    register EdgeTableEntry *pAET;  /* the Active Edge Table   */
-    register int y;                 /* the current scanline    */
-    register int nPts = 0;          /* number of pts in buffer */
-    register EdgeTableEntry *pWETE; /* Winding Edge Table      */
-    register ScanLineList *pSLL;    /* Current ScanLineList    */
-    register DDXPointPtr ptsOut;      /* ptr to output buffers   */
+    EdgeTableEntry *pAET;  /* the Active Edge Table   */
+    int y;                 /* the current scanline    */
+    int nPts = 0;          /* number of pts in buffer */
+    EdgeTableEntry *pWETE; /* Winding Edge Table      */
+    ScanLineList *pSLL;    /* Current ScanLineList    */
+    DDXPointPtr ptsOut;      /* ptr to output buffers   */
     int *width;
     DDXPointRec FirstPoint[NUMPTSTOBUFFER]; /* the output buffers */
     int FirstWidth[NUMPTSTOBUFFER];
